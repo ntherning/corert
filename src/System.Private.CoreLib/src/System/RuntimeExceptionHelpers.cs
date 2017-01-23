@@ -13,11 +13,15 @@ using Internal.Runtime.Augments;
 
 namespace System
 {
-    // Eagerly preallocate instance of out of memory exception to avoid infinite recursion once we run out of memory
-    [EagerOrderedStaticConstructor(EagerStaticConstructorOrder.SystemPreallocatedOutOfMemoryException)]
     internal class PreallocatedOutOfMemoryException
     {
-        public static readonly OutOfMemoryException Instance = new OutOfMemoryException(message: null);  // Cannot call the nullary constructor as that triggers non-trivial resource manager logic.
+        public static OutOfMemoryException Instance { get; private set; }
+
+        // Eagerly preallocate instance of out of memory exception to avoid infinite recursion once we run out of memory
+        internal static void Initialize()
+        {
+             Instance = new OutOfMemoryException(message: null);  // Cannot call the nullary constructor as that triggers non-trivial resource manager logic.
+        }
     }
 
     public class RuntimeExceptionHelpers
@@ -398,7 +402,7 @@ namespace System
             LowLevelList<Exception> exceptions = new LowLevelList<Exception>(curThreadExceptions);
             LowLevelList<Exception> nonThrownInnerExceptions = new LowLevelList<Exception>();
 
-            uint currentThreadId = Interop.mincore.GetCurrentThreadId();
+            uint currentThreadId = (uint)Environment.CurrentNativeThreadId;
 
             // Reset nesting levels for exceptions on this thread that might not be currently in flight
             foreach (ExceptionData exceptionData in s_exceptionDataTable.GetValues())

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Runtime.CompilerServices;
 
 class Program
 {
@@ -16,6 +17,8 @@ class Program
         TestSlotsInHierarchy.Run();
         TestDelegateVirtualMethod.Run();
         TestDelegateInterfaceMethod.Run();
+        TestThreadStaticFieldAccess.Run();
+        TestConstrainedMethodCalls.Run();
         TestNameManglingCollisionRegression.Run();
         TestUnusedGVMsDoNotCrashCompiler.Run();
 
@@ -319,6 +322,100 @@ class Program
                 throw new Exception();
 
             if (derived.Cast("Hello") != "Hello")
+                throw new Exception();
+        }
+    }
+
+    class TestThreadStaticFieldAccess
+    {
+        class TypeWithThreadStaticField<T>
+        {
+            [ThreadStatic]
+            public static int X;
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public static int Read()
+            {
+                return X;
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public static void Write(int x)
+            {
+                X = x;
+            }
+        }
+
+        class BeforeFieldInitType<T>
+        {
+            [ThreadStatic]
+            public static int X = 1985;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static int ReadFromBeforeFieldInitType<T>()
+        {
+            return BeforeFieldInitType<T>.X;
+        }
+
+        public static void Run()
+        {
+            // This will set the field to a value from non-shared code
+            TypeWithThreadStaticField<object>.X = 42;
+
+            // Now read the value from shared code
+            if (TypeWithThreadStaticField<object>.Read() != 42)
+                throw new Exception();
+
+            // Set the value from shared code
+            TypeWithThreadStaticField<string>.Write(112);
+
+            // Now read the value from non-shared code
+            if (TypeWithThreadStaticField<string>.X != 112)
+                throw new Exception();
+
+            // Check that the storage locations for string and object instantiations differ
+            if (TypeWithThreadStaticField<object>.Read() != 42)
+                throw new Exception();
+
+            // Make sure we run the cctor
+            if (ReadFromBeforeFieldInitType<object>() != 1985)
+                throw new Exception();
+        }
+    }
+
+    class TestConstrainedMethodCalls
+    {
+        interface IFoo<T>
+        {
+            void Frob();
+        }
+
+        struct Foo<T> : IFoo<T>
+        {
+            public int FrobbedValue;
+
+            public void Frob()
+            {
+                FrobbedValue = 12345;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void DoFrob<T, U>(ref T t) where T : IFoo<U>
+        {
+            // Perform a constrained interface call from shared code.
+            // This should have been resolved to a direct call at compile time.
+            t.Frob();
+        }
+
+        public static void Run()
+        {
+            var foo = new Foo<object>();
+            DoFrob<Foo<object>, object>(ref foo);
+
+            // If the FrobbedValue doesn't change when we frob, we must have done box+interface call.
+            if (foo.FrobbedValue != 12345)
                 throw new Exception();
         }
     }

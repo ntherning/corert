@@ -86,13 +86,12 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
-    [EagerOrderedStaticConstructor(EagerStaticConstructorOrder.TypeLoaderEnvironment)]
     public sealed partial class TypeLoaderEnvironment
     {
         [ThreadStatic]
         private static bool t_isReentrant;
 
-        public static readonly TypeLoaderEnvironment Instance;
+        public static TypeLoaderEnvironment Instance { get; private set; }
 
         /// <summary>
         /// List of loaded binary modules is typically used to locate / process various metadata blobs
@@ -107,10 +106,13 @@ namespace Internal.Runtime.TypeLoader
         [ThreadStatic]
         private static LowLevelDictionary<IntPtr, NativeReader> t_moduleNativeReaders;
 
-        static TypeLoaderEnvironment()
+        // Eager initialization called from LibraryInitializer for the assembly.
+        internal static void Initialize()
         {
             Instance = new TypeLoaderEnvironment();
             RuntimeAugments.InitializeLookups(new Callbacks());
+            s_nativeFormatStrings = new LowLevelDictionary<string, IntPtr>();
+            NoStaticsData = (IntPtr)1;
         }
 
         public TypeLoaderEnvironment()

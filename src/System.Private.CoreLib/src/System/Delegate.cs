@@ -5,6 +5,7 @@
 using System.Text;
 using System.Runtime;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
@@ -19,7 +20,7 @@ namespace System
     // sequential layout directive so that Bartok matches it.
     [StructLayout(LayoutKind.Sequential)]
     [DebuggerDisplay("Target method(s) = {GetTargetMethodsDescriptionForDebugger()}")]
-    public abstract partial class Delegate : ICloneable
+    public abstract partial class Delegate : ICloneable, ISerializable
     {
         // This ctor exists solely to prevent C# from generating a protected .ctor that violates the surface area. I really want this to be a
         // "protected-and-internal" rather than "internal" but C# has no keyword for the former.
@@ -630,7 +631,7 @@ namespace System
                 int invocationCount = (int)m_extraFunctionPointerOrData;
                 del = new Delegate[invocationCount];
 
-                for (int i = 0; i < invocationCount; i++)
+                for (int i = 0; i < del.Length; i++)
                     del[i] = invocationList[i];
             }
             return del;
@@ -705,6 +706,11 @@ namespace System
         public virtual object Clone()
         {
             return MemberwiseClone();
+        }
+
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            throw new NotSupportedException();
         }
 
         internal bool IsOpenStatic

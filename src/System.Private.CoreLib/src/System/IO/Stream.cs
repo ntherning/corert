@@ -4,12 +4,13 @@
 
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Diagnostics.Private;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.IO
 {
-    public abstract class Stream : IDisposable
+    public abstract partial class Stream : IDisposable
     {
         public static readonly Stream Null = new NullStream();
 
@@ -287,10 +288,12 @@ namespace System.IO
 
         public virtual Task WriteAsync(Byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
+#if !MONO
             if (!CanWrite)
             {
                 throw new NotSupportedException(SR.NotSupported_UnwritableStream);
             }
+#endif
 
             return cancellationToken.IsCancellationRequested ?
                 Task.FromCanceled<int>(cancellationToken) :

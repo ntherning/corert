@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Diagnostics.Private;
 
 namespace System.IO
 {
@@ -18,7 +19,7 @@ namespace System.IO
     // memory streams are resizable, while ones created with a byte array provide
     // a stream "view" of the data.
     [Serializable]
-    public class MemoryStream : Stream
+    public partial class MemoryStream : Stream
     {
         private byte[] _buffer;    // Either allocated internally or externally.
         private int _origin;       // For user-provided arrays, start at this origin

@@ -19,6 +19,14 @@ namespace System.Threading
         private readonly SafeThreadPoolIOHandle _threadPoolHandle;
         private DeferredDisposableLifetime<ThreadPoolBoundHandle> _lifetime;
 
+#if MONO
+        static ThreadPoolBoundHandle()
+        {
+            if (!Environment.IsRunningOnWindows)
+                throw new PlatformNotSupportedException();
+        }
+#endif
+
         private ThreadPoolBoundHandle(SafeHandle handle, SafeThreadPoolIOHandle threadPoolHandle)
         {
             _threadPoolHandle = threadPoolHandle;
@@ -192,6 +200,11 @@ namespace System.Threading
 
         ~ThreadPoolBoundHandle()
         {
+#if MONO
+            if (!Environment.IsRunningOnWindows)
+                throw new PlatformNotSupportedException();
+#endif
+
             //
             // During shutdown, don't automatically clean up, because this instance may still be
             // reachable/usable by other code.

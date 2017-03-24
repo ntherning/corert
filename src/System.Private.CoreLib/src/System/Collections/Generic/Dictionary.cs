@@ -8,6 +8,9 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+#if MONO
+using System.Diagnostics.Private;
+#endif
 
 namespace System.Collections.Generic
 {

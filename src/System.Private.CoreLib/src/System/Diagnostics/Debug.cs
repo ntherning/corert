@@ -13,7 +13,10 @@ namespace System.Diagnostics
     /// <summary>
     /// Provides a set of properties and methods for debugging code.
     /// </summary>
-    public static partial class Debug
+#if !MONO
+    public
+#endif
+    static partial class Debug
     {
         private static readonly object s_ForLock = new Object();
 

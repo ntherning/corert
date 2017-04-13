@@ -78,11 +78,12 @@ namespace System.Collections.Generic
             if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity), capacity, SR.ArgumentOutOfRange_NeedNonNegNum);
             if (capacity > 0) Initialize(capacity);
             this.comparer = comparer ?? EqualityComparer<TKey>.Default;
-
+#if !MONO
             if (this.comparer == EqualityComparer<string>.Default)
             {
                 this.comparer = (IEqualityComparer<TKey>)NonRandomizedStringEqualityComparer.Default;
             }
+#endif
         }
 
         public Dictionary(IDictionary<TKey, TValue> dictionary) : this(dictionary, null) { }

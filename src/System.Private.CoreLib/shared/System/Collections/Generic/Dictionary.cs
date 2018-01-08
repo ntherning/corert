@@ -37,7 +37,9 @@ namespace System.Collections.Generic
     [DebuggerTypeProxy(typeof(IDictionaryDebugView<,>))]
     [DebuggerDisplay("Count = {Count}")]
     [Serializable]
+#if !MONO
     [System.Runtime.CompilerServices.TypeForwardedFrom("mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")]
+#endif
     public class Dictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>, ISerializable, IDeserializationCallback
     {
         private struct Entry
@@ -450,6 +452,7 @@ namespace System.Collections.Generic
             _buckets[targetBucket] = index;
             _version++;
 
+#if !MONO
             // If we hit the collision threshold we'll need to switch to the comparer which is using randomized string hashing
             // i.e. EqualityComparer<string>.Default.
 
@@ -458,6 +461,7 @@ namespace System.Collections.Generic
                 _comparer = (IEqualityComparer<TKey>)EqualityComparer<string>.Default;
                 Resize(_entries.Length, true);
             }
+#endif
 
             return true;
         }
@@ -901,6 +905,9 @@ namespace System.Collections.Generic
             }
         }
 
+#if MONO
+        [Serializable]
+#endif
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>,
             IDictionaryEnumerator
         {
@@ -1029,6 +1036,9 @@ namespace System.Collections.Generic
 
         [DebuggerTypeProxy(typeof(DictionaryKeyCollectionDebugView<,>))]
         [DebuggerDisplay("Count = {Count}")]
+#if MONO
+        [Serializable]
+#endif
         public sealed class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>
         {
             private Dictionary<TKey, TValue> _dictionary;
@@ -1179,6 +1189,9 @@ namespace System.Collections.Generic
                 get { return ((ICollection)_dictionary).SyncRoot; }
             }
 
+#if MONO
+            [Serializable]
+#endif
             public struct Enumerator : IEnumerator<TKey>, System.Collections.IEnumerator
             {
                 private Dictionary<TKey, TValue> _dictionary;
@@ -1257,6 +1270,9 @@ namespace System.Collections.Generic
 
         [DebuggerTypeProxy(typeof(DictionaryValueCollectionDebugView<,>))]
         [DebuggerDisplay("Count = {Count}")]
+#if MONO
+        [Serializable]
+#endif
         public sealed class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>
         {
             private Dictionary<TKey, TValue> _dictionary;
@@ -1405,6 +1421,9 @@ namespace System.Collections.Generic
                 get { return ((ICollection)_dictionary).SyncRoot; }
             }
 
+#if MONO
+            [Serializable]
+#endif
             public struct Enumerator : IEnumerator<TValue>, System.Collections.IEnumerator
             {
                 private Dictionary<TKey, TValue> _dictionary;

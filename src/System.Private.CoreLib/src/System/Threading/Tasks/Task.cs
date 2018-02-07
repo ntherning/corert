@@ -2421,6 +2421,7 @@ namespace System.Threading.Tasks
             return true;
         }
 
+#if !MONO
         // A trick so we can refer to the TLS slot with a byref.
         private void ExecuteWithThreadLocal(ref Task currentTaskSlot)
         {
@@ -2475,6 +2476,7 @@ namespace System.Threading.Tasks
                     TaskTrace.TaskCompleted(TaskScheduler.Current.Id, 0, this.Id, IsFaulted);
             }
         }
+#endif
 
         // Cached callback delegate that's lazily initialized due to ContextCallback being SecurityCritical
         private static ContextCallback s_ecCallback;

@@ -129,6 +129,15 @@ namespace System
                 }
 #endif // BIT64
 
+#if MONO
+                char* ptr2 = (char*)strBChars;
+                while ((count -= 1) >= 0)
+                {
+                    if ((*((char*)((byte*)ptr2 + diff)) - *ptr2) != 0)
+                        return ((int)*((char*)((byte*)ptr2 + diff)) - (int)*ptr2);
+                    ++ptr2;
+                }
+#else
                 // Loop comparing a DWORD at a time.
                 // Reads are potentially unaligned
                 while ((count -= 2) >= 0)
@@ -148,6 +157,7 @@ namespace System
                 if (count == -1)
                     if ((c = *((char*)((byte*)strBChars + diff)) - *((char*)strBChars)) != 0)
                         return c;
+#endif
             }
 
             return countA - countB;

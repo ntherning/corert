@@ -22,7 +22,7 @@ namespace System
         //
         //Native Static Methods
         //
-
+#if !MONO
         private static unsafe int FastCompareStringHelper(uint* strAChars, int countA, uint* strBChars, int countB)
         {
             int count = (countA < countB) ? countA : countB;
@@ -129,15 +129,6 @@ namespace System
                 }
 #endif // BIT64
 
-#if MONO
-                char* ptr2 = (char*)strBChars;
-                while ((count -= 1) >= 0)
-                {
-                    if ((*((char*)((byte*)ptr2 + diff)) - *ptr2) != 0)
-                        return ((int)*((char*)((byte*)ptr2 + diff)) - (int)*ptr2);
-                    ++ptr2;
-                }
-#else
                 // Loop comparing a DWORD at a time.
                 // Reads are potentially unaligned
                 while ((count -= 2) >= 0)
@@ -157,12 +148,11 @@ namespace System
                 if (count == -1)
                     if ((c = *((char*)((byte*)strBChars + diff)) - *((char*)strBChars)) != 0)
                         return c;
-#endif
             }
 
             return countA - countB;
         }
-
+#endif
         //
         //
         // NATIVE INSTANCE METHODS

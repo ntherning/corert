@@ -1399,7 +1399,7 @@ namespace Internal.JitInterface
         private uint getClassAlignmentRequirement(CORINFO_CLASS_STRUCT_* cls, bool fDoubleAlignHint)
         {
             DefType type = (DefType)HandleToObject(cls);
-            return (uint)type.InstanceByteAlignment.AsInt;
+            return (uint)type.InstanceFieldAlignment.AsInt;
         }
 
         private int GatherClassGCLayout(TypeDesc type, byte* gcPtrs)
@@ -1477,7 +1477,7 @@ namespace Internal.JitInterface
 
             int pointerSize = PointerSize;
 
-            int ptrsCount = AlignmentHelper.AlignUp(type.InstanceByteCount.AsInt, pointerSize) / pointerSize;
+            int ptrsCount = AlignmentHelper.AlignUp(type.InstanceFieldSize.AsInt, pointerSize) / pointerSize;
 
             // Assume no GC pointers at first
             for (int i = 0; i < ptrsCount; i++)

@@ -13,14 +13,42 @@ internal static class Program
     private static int staticInt;
     [ThreadStatic]
     private static int threadStaticInt;
-    private static unsafe void Main(string[] args)
+    private static unsafe int Main(string[] args)
     {
         Add(1, 2);
         int tempInt = 0;
+        int tempInt2 = 0;
         (*(&tempInt)) = 9;
         if(tempInt == 9)
         {
             PrintLine("Hello from C#!");
+        }
+
+        int* targetAddr = (tempInt > 0) ? (&tempInt2) : (&tempInt);
+
+        (*targetAddr) = 1;
+        if(tempInt2 == 1 && tempInt == 9)
+        {
+            PrintLine("basic block stack entry Test: Ok.");
+        }
+
+        if(ILHelpers.ILHelpersTest.InlineAssignByte() == 100)
+        {
+            PrintLine("Inline assign byte Test: Ok.");
+        }
+        else
+        {
+            PrintLine("Inline assign byte Test: Failed.");
+        }
+
+        int dupTestInt = 9;
+        if(ILHelpers.ILHelpersTest.DupTest(ref dupTestInt) == 209 && dupTestInt == 209)
+        {
+            PrintLine("dup test: Ok.");
+        }
+        else
+        {
+            PrintLine("dup test: Failed.");
         }
 
         TestClass tempObj = new TestDerivedClass(1337);
@@ -55,12 +83,19 @@ internal static class Program
             PrintLine("thread static int field test: Ok.");
         }
 
+        StaticCtorTest();
+
         var boxedInt = (object)tempInt;
         if(((int)boxedInt) == 9)
         {
             PrintLine("box test: Ok.");
         }
-
+        else
+        {
+            PrintLine("box test: Failed. Value:");
+            PrintLine(boxedInt.ToString());
+        }
+        
         var boxedStruct = (object)new BoxStubTest { Value = "Boxed Stub Test: Ok." };
         PrintLine(boxedStruct.ToString());
 
@@ -157,6 +192,10 @@ internal static class Program
         arrayTest[1].Value = "Array load/store test: Ok.";
         PrintLine(arrayTest[1].Value);
 
+        int ii = 0;
+        arrayTest[ii++].Value = "dup ref test: Ok.";
+        PrintLine(arrayTest[0].Value);
+        
         var largeArrayTest = new long[] { Int64.MaxValue, 0, Int64.MinValue, 0 };
         if(largeArrayTest[0] == Int64.MaxValue &&
             largeArrayTest[1] == 0 &&
@@ -186,6 +225,9 @@ internal static class Program
         IntToStringTest();
 
         CastingTestClass castingTest = new DerivedCastingTestClass1();
+
+        PrintLine("interface call test: Ok " + (castingTest as ICastingTest1).GetValue().ToString());
+
         if (((DerivedCastingTestClass1)castingTest).GetValue() == 1 && !(castingTest is DerivedCastingTestClass2))
         {
             PrintLine("Type casting with isinst & castclass to class test: Ok.");
@@ -208,17 +250,72 @@ internal static class Program
 
         ldindTest();
 
-        System.Diagnostics.Debugger.Break();
+        InterfaceDispatchTest();
 
-        var testRuntimeHelpersInitArray = new long[] {1, 2, 3};
-        if(testRuntimeHelpersInitArray[0] == 1 &&
+        var testRuntimeHelpersInitArray = new long[] { 1, 2, 3 };
+        if (testRuntimeHelpersInitArray[0] == 1 &&
             testRuntimeHelpersInitArray[1] == 2 &&
             testRuntimeHelpersInitArray[2] == 3)
         {
             PrintLine("Runtime.Helpers array initialization test: Ok.");
         }
 
+        var testMdArrayInstantiation = new int[2, 2];
+        if (testMdArrayInstantiation != null && testMdArrayInstantiation.GetLength(0) == 2 && testMdArrayInstantiation.GetLength(1) == 2)
+            PrintLine("Multi-dimension array instantiation test: Ok.");
+
+        int intToCast = 1;
+        double castedDouble = (double)intToCast;
+        if (castedDouble == 1d)
+        {
+            PrintLine("(double) cast test: Ok.");
+        }
+        else
+        {
+            var toInt = (int)castedDouble;
+//            PrintLine("expected 1m, but was " + castedDouble.ToString());  // double.ToString is not compiling at the time of writing, but this would be better output
+            PrintLine($"(double) cast test : Failed. Back to int on next line");
+            PrintLine(toInt.ToString());
+        }
+
+        if (1f < 2d && 1d < 2f && 1f == 1d)
+        {
+            PrintLine("different width float comparisons: Ok.");
+        }
+
+        // floats are 7 digits precision, so check some double more precise to make sure there is no loss occurring through some inadvertent cast to float
+        if (10.23456789d != 10.234567891d)
+        {
+            PrintLine("double precision comparison: Ok.");
+        }
+
+        if (12.34567f == 12.34567f && 12.34567f != 12.34568f)
+        {
+            PrintLine("float comparison: Ok.");
+        }
+
+        // Create a ByReference<char> through the ReadOnlySpan ctor and call the ByReference.Value via the indexer.
+        var span = "123".AsSpan();
+        if (span[0] != '1'
+            || span[1] != '2'
+            || span[2] != '3')
+        {
+            PrintLine("ByReference intrinsics exercise via ReadOnlySpan failed");
+            PrintLine(span[0].ToString());
+            PrintLine(span[1].ToString());
+            PrintLine(span[2].ToString());
+        }
+        else
+        {
+            PrintLine("ByReference intrinsics exercise via ReadOnlySpan OK.");
+        }
+
+        // This test should remain last to get other results before stopping the debugger
+        PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
+        System.Diagnostics.Debugger.Break();
+
         PrintLine("Done");
+        return 100;
     }
 
     private static int StaticDelegateTarget()
@@ -346,6 +443,53 @@ internal static class Program
         }
     }
 
+    private static void InterfaceDispatchTest()
+    {
+        ItfStruct itfStruct = new ItfStruct();
+        if (ItfCaller(itfStruct) == 4)
+        {
+            PrintLine("Struct interface test: Ok.");
+        }
+    }
+
+    // Calls the ITestItf interface via a generic to ensure the concrete type is known and
+    // an interface call is generated instead of a virtual or direct call
+    private static int ItfCaller<T>(T obj) where T : ITestItf
+    {
+        return obj.GetValue();
+    }
+
+    private static void StaticCtorTest()
+    {
+        BeforeFieldInitTest.Nop();
+        if (StaticsInited.BeforeFieldInitInited)
+        {
+            PrintLine("BeforeFieldInitType inited too early");
+        }
+        else
+        {
+            int x = BeforeFieldInitTest.TestField;
+            if (StaticsInited.BeforeFieldInitInited)
+            {
+                PrintLine("BeforeFieldInit test: Ok.");
+            }
+            else
+            {
+                PrintLine("BeforeFieldInit cctor not run");
+            }
+        }
+
+        NonBeforeFieldInitTest.Nop();
+        if (StaticsInited.NonBeforeFieldInitInited)
+        {
+            PrintLine("NonBeforeFieldInit test: Ok.");
+        }
+        else
+        { 
+            PrintLine("NonBeforeFieldInitType cctor not run");
+        }
+    }
+
     [DllImport("*")]
     private static unsafe extern int printf(byte* str, byte* unused);
 }
@@ -433,6 +577,38 @@ public class TestDerivedClass : TestClass
     }
 }
 
+public class StaticsInited
+{
+    public static bool BeforeFieldInitInited;
+    public static bool NonBeforeFieldInitInited;
+}
+
+public class BeforeFieldInitTest
+{
+    public static int TestField = BeforeFieldInit();
+
+    public static void Nop() { }
+
+    static int BeforeFieldInit()
+    {
+        StaticsInited.BeforeFieldInitInited = true;
+        return 3;
+    }
+}
+
+public class NonBeforeFieldInitTest
+{
+    public static int TestField;
+
+    public static void Nop() { }
+
+    static NonBeforeFieldInitTest()
+    {
+        TestField = 4;
+        StaticsInited.NonBeforeFieldInitInited = true;
+    }
+}
+
 public interface ICastingTest1
 {
     int GetValue();
@@ -456,4 +632,17 @@ public class DerivedCastingTestClass1 : CastingTestClass, ICastingTest1
 public class DerivedCastingTestClass2 : CastingTestClass, ICastingTest2
 {
     public override int GetValue() => 2;
+}
+
+public interface ITestItf
+{
+    int GetValue();
+}
+
+public struct ItfStruct : ITestItf
+{
+    public int GetValue()
+    {
+        return 4;
+    }
 }

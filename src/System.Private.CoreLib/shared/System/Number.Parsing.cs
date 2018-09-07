@@ -5,7 +5,11 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+#if MONO
+using System.Runtime.CompilerServices;
+#else
 using Internal.Runtime.CompilerServices;
+#endif
 
 namespace System
 {

@@ -913,6 +913,19 @@ namespace System
             if (length <= 1)
                 return;
 
+#if __MonoCS__
+            ref T p = ref Unsafe.As<byte, T>(ref array.GetRawSzArrayData());
+            int i = index;
+            int j = index + length - 1;
+            while (i < j)
+            {
+                T temp = Unsafe.Add(ref p, i);
+                Unsafe.Add(ref p, i) = Unsafe.Add(ref p, j);
+                Unsafe.Add(ref p, j) = temp;
+                i++;
+                j--;
+            }
+#else
             ref T first = ref Unsafe.Add(ref Unsafe.As<byte, T>(ref array.GetRawSzArrayData()), index);
             ref T last = ref Unsafe.Add(ref Unsafe.Add(ref first, length), -1);
             do
@@ -923,6 +936,7 @@ namespace System
                 first = ref Unsafe.Add(ref first, 1);
                 last = ref Unsafe.Add(ref last, -1);
             } while (Unsafe.IsAddressLessThan(ref first, ref last));
+#endif
         }
 
         public void SetValue(object value, long index)
